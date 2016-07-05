@@ -138,10 +138,15 @@ int main(int argc, char *argv[])
     g_object_unref(provider);
     */
 
+    PluginManager *pm = plugin_manager_new();
+
+    plugin_manager_load_plugin(pm, "../koradapp/koradapp.so", nb);
 
     gtk_widget_show_all(GTK_WIDGET(window));
 
     gtk_main();
+
+    plugin_manager_free(pm);
 
     return 0;
 }
