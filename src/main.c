@@ -8,7 +8,7 @@ PluginManager *
 plugin_manager_new()
 {
     PluginManager *p = g_new0(PluginManager, 1);
-    
+
     return p;
 }
 
@@ -25,7 +25,7 @@ plugin_manager_free(PluginManager *p)
 
         if (plugin->destroy)
             plugin->destroy();
-    
+
         g_free(plugin);
 
         plugin = next;
@@ -42,7 +42,7 @@ plugin_manager_load_plugin(PluginManager *p, const char *path, GtkNotebook *nb)
         return;
 
     dlerror();
-    initialize_func initialize = dlsym(plugin, "initialize_plugin");    
+    initialize_func initialize = dlsym(plugin, "initialize_plugin");
     const char *error;
     if ((error = dlerror()))
     {
@@ -51,7 +51,7 @@ plugin_manager_load_plugin(PluginManager *p, const char *path, GtkNotebook *nb)
     }
 
     dlerror();
-    destroy_func destroy = dlsym(plugin, "destroy_plugin");    
+    destroy_func destroy = dlsym(plugin, "destroy_plugin");
     if ((error = dlerror()))
     {
         printf("Could not find symbol: %s\n", error);
@@ -86,8 +86,33 @@ plugin_manager_load_plugin(PluginManager *p, const char *path, GtkNotebook *nb)
     }
 }
 
+void
+plugin_manager_load_directory(PluginManager *pm, const gchar* path, GtkNotebook *notebook)
+{
+    GError *error = NULL;
+    GDir *dir = g_dir_open(path, 0, &error);
 
-void app_shutdown(gpointer user_data)
+    if (error)
+    {
+        g_warning("Error loading plugins from directory %s: %s", path, error->message);
+        g_error_free(error);
+        return;
+    }
+
+    const gchar *file;
+    while ((file = g_dir_read_name(dir)) != NULL)
+    {
+        gchar *file_path = g_build_path(G_DIR_SEPARATOR_S, path, file, NULL);
+        plugin_manager_load_plugin(pm, file_path, notebook);
+        g_free(file_path);
+    }
+
+    g_dir_close(dir);
+}
+
+
+void
+app_shutdown(gpointer user_data)
 {
     gtk_main_quit();
 }
@@ -139,6 +164,11 @@ int main(int argc, char *argv[])
     */
 
     PluginManager *pm = plugin_manager_new();
+
+    plugin_manager_load_directory(pm, "/usr/lib/appmanager/plugins/", nb);
+    gchar *home_path = g_build_path(G_DIR_SEPARATOR_S, g_get_home_dir(), ".appmanager", NULL);
+    plugin_manager_load_directory(pm, home_path, nb);
+    g_free(home_path);
 
     plugin_manager_load_plugin(pm, "../koradapp/koradapp.so", nb);
 
