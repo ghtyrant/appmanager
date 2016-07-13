@@ -13,24 +13,21 @@ plugin_manager_new()
 }
 
 void
+plugin_manager_free_plugin_view(void *data)
+{
+    AppManagerPluginView *view = (AppManagerPluginView*) data;
+
+    g_free(view->name);
+    gtk_widget_destroy(GTK_WIDGET(view->container));
+    view->destroy();
+
+    g_free(view);
+}
+
+void
 plugin_manager_free(PluginManager *p)
 {
-    for (AppManagerPlugin *plugin = p->plugin_list;
-            plugin;
-            )
-    {
-        AppManagerPlugin *next = plugin->next;
-
-        gtk_widget_destroy(GTK_WIDGET(plugin->container));
-
-        if (plugin->destroy)
-            plugin->destroy();
-
-        g_free(plugin);
-
-        plugin = next;
-    }
-
+    g_list_free_full(p->plugin_list, plugin_manager_free_plugin_view);
     g_free(p);
 }
 
@@ -46,7 +43,7 @@ plugin_manager_load_plugin(PluginManager *p, const char *path, GtkNotebook *nb)
     const char *error;
     if ((error = dlerror()))
     {
-        printf("Could not find symbol: %s\n", error);
+        printf("Could not find 'initialize' symbol: %s\n", error);
         return;
     }
 
@@ -54,36 +51,34 @@ plugin_manager_load_plugin(PluginManager *p, const char *path, GtkNotebook *nb)
     destroy_func destroy = dlsym(plugin, "destroy_plugin");
     if ((error = dlerror()))
     {
-        printf("Could not find symbol: %s\n", error);
+        printf("Could not find 'destroy' symbol: %s\n", error);
         return;
     }
 
-    gulong *plugin_view = (*initialize)();
+    GList *views = (*initialize)();
 
-    while (*plugin_view != 0)
+    for (GList *i = views; i != NULL; i = i->next)
     {
+        PluginViewDefinition *def = (PluginViewDefinition*)i->data;
+
         GtkSocket *socket = GTK_SOCKET(gtk_socket_new());
         GtkScrolledWindow *win = GTK_SCROLLED_WINDOW(gtk_scrolled_window_new(NULL, NULL));
         gtk_container_add(GTK_CONTAINER(win), GTK_WIDGET(socket));
 
-        gtk_notebook_append_page(nb, GTK_WIDGET(win), NULL);
-        gtk_socket_add_id(socket, *plugin_view);
+        gtk_notebook_append_page(nb, GTK_WIDGET(win), gtk_label_new(def->name));
+        gtk_socket_add_id(socket, def->plug_id);
 
-        AppManagerPlugin *plugin = g_new0(AppManagerPlugin, 1);
-        plugin->plug_id = plugin_view;
+        AppManagerPluginView *plugin = g_new0(AppManagerPluginView, 1);
+        plugin->plug_id = def->plug_id;
         plugin->container = win;
         plugin->initialize = initialize;
         plugin->destroy = destroy;
+        plugin->name = g_strdup(def->name);
 
-        if (p->plugin_list == NULL)
-            p->plugin_list = plugin;
-        else
-            p->plugin_list_end->next = plugin;
-
-        p->plugin_list_end = plugin;
-
-        plugin_view++;
+        p->plugin_list = g_list_append(p->plugin_list, p);
     }
+
+    g_list_free(views);
 }
 
 void

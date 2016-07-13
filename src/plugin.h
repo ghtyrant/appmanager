@@ -1,24 +1,28 @@
 #ifndef __PLUGIN_H_
 #define __PLUGIN_H_
 
-typedef gulong* (*initialize_func)(void);
+typedef GList* (*initialize_func)(void);
 typedef void (*destroy_func)(void);
-typedef struct _AppManagerPlugin
+typedef struct _AppManagerPluginView
 {
-    const char *name;
+    gchar *name;
     gulong plug_id;
     GtkScrolledWindow *container;
 
     initialize_func initialize;
     destroy_func destroy;
-
-    struct _AppManagerPlugin *next;
-} AppManagerPlugin;
+} AppManagerPluginView;
 
 typedef struct
 {
-    AppManagerPlugin *plugin_list;
-    AppManagerPlugin *plugin_list_end;
+    GList *plugin_list;
 } PluginManager;
+
+typedef struct
+{
+    const gchar* name;
+    const gchar* icon;
+    gulong plug_id;
+} PluginViewDefinition;
 
 #endif //__PLUGIN_H_
