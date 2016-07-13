@@ -3,15 +3,22 @@
 
 typedef GList* (*initialize_func)(void);
 typedef void (*destroy_func)(void);
-typedef struct _AppManagerPluginView
+
+typedef struct _App
 {
     gchar *name;
-    gulong plug_id;
+    gchar *path;
+    GList *views;
+    GPid pid;
+} App;
+
+typedef struct _AppView
+{
+    gchar *name;
+    gchar *label;
     GtkScrolledWindow *container;
 
-    initialize_func initialize;
-    destroy_func destroy;
-} AppManagerPluginView;
+} AppView;
 
 typedef struct
 {
