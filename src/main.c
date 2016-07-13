@@ -98,7 +98,11 @@ plugin_manager_load_directory(PluginManager *pm, const gchar* path, GtkNotebook 
     while ((file = g_dir_read_name(dir)) != NULL)
     {
         gchar *file_path = g_build_path(G_DIR_SEPARATOR_S, path, file, NULL);
-        plugin_manager_load_plugin(pm, file_path, notebook);
+
+        g_info("Checking file '%s' ...", file);
+        if (strncmp(file + strlen(file) - 3, ".so", 3) == 0)
+            plugin_manager_load_plugin(pm, file_path, notebook);
+
         g_free(file_path);
     }
 
