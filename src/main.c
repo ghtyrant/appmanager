@@ -37,7 +37,10 @@ plugin_manager_load_plugin(PluginManager *p, const char *path, GtkNotebook *nb)
 {
     void *plugin = dlopen(path, RTLD_LAZY);
     if (!plugin)
+    {
+        g_error("Error loading plugin '%s': %s", path, dlerror());
         return;
+    }
 
     dlerror();
     initialize_func initialize = dlsym(plugin, "initialize_plugin");
@@ -56,7 +59,9 @@ plugin_manager_load_plugin(PluginManager *p, const char *path, GtkNotebook *nb)
         return;
     }
 
+    g_info("Initializing plugin '%s'", path);
     GList *views = (*initialize)();
+    g_info("  - Loading views (%d)", g_list_length(views));
 
     for (GList *i = views; i != NULL; i = i->next)
     {
@@ -75,6 +80,8 @@ plugin_manager_load_plugin(PluginManager *p, const char *path, GtkNotebook *nb)
         plugin->initialize = initialize;
         plugin->destroy = destroy;
         plugin->name = g_strdup(def->name);
+
+        g_warning("    - Adding view '%s'", def->name);
 
         p->plugin_list = g_list_append(p->plugin_list, p);
     }
@@ -125,7 +132,7 @@ int main(int argc, char *argv[])
 
     builder = gtk_builder_new();
     GError *error = NULL;
-    gtk_builder_add_from_file(builder, "src/ui/mainwindow.glade", &error);
+    gtk_builder_add_from_file(builder, "/home/lab/projects/appmanager/src/ui/mainwindow.glade", &error);
 
     if (error != NULL)
     {
@@ -169,8 +176,6 @@ int main(int argc, char *argv[])
     gchar *home_path = g_build_path(G_DIR_SEPARATOR_S, g_get_home_dir(), ".appmanager", NULL);
     plugin_manager_load_directory(pm, home_path, nb);
     g_free(home_path);
-
-    plugin_manager_load_plugin(pm, "../koradapp/koradapp.so", nb);
 
     gtk_widget_show_all(GTK_WIDGET(window));
 
